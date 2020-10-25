@@ -4,12 +4,17 @@
   "description": "File Encryption for Cloud Storage",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index",
+    "dev": "nodemon index"
   },
   "author": "Subho",
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
+    "express-fileupload": "^1.2.0",
+    "file-encryptor": "^0.1.1",
+    "split-file": "^2.2.1",
     "uuid": "^8.3.1"
   },
   "devDependencies": {
