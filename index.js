@@ -6,6 +6,7 @@ const fs = require("fs");
 const express = require("express");
 const upload = require("express-fileupload");
 const splitFile = require("split-file");
+const admin = require("firebase-admin");
 
 const AppendInitVect = require("./appendInitVector");
 
@@ -18,6 +19,16 @@ app.use(
 		createParentPath: true,
 	})
 );
+
+// // Firebase Admin initialize
+// var serviceAccount = require("./encrypted-storage-system-firebase-adminsdk-xqaq0-a5caa56742.json");
+// admin.initializeApp({
+// 	credential: admin.credential.cert(serviceAccount),
+// 	databaseURL: "https://encrypted-storage-system.firebaseio.com",
+// });
+
+// const defaultApp = admin.initializeApp(defaultAppConfig);
+
 
 // Global Variables
 const chunkSize = 1024 * 1024;
