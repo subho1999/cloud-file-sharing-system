@@ -34,6 +34,7 @@ app.use(
 const chunkSize = 1024 * 1024;
 let keyArray = new Array();
 let namesArray = new Array();
+let encKeyArray = new Array();
 
 const uploadFile = (file) => {
 	return new Promise((resolve, reject) => {
@@ -64,6 +65,7 @@ function encryptFile(filePath, index) {
 	const appendInitVect = new AppendInitVect(initVector);
 
 	readStream.pipe(gzip).pipe(cipher).pipe(appendInitVect).pipe(writeStream);
+	namesArray.push(encFilePath);
 }
 
 function decryptFile(encFilePath, index) {
@@ -100,7 +102,18 @@ app.post("/upload", async (req, res) => {
 								generateKey(fileLocation, index);
 								encryptFile(fileLocation, index);
 							});
-							namesArray = namesArray.concat(names);
+							keyArray.forEach((keyObject, index) => {
+								const encryptedKey = crypto.privateEncrypt(
+									{
+										key: req.body.privateKey,
+										padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+										oaepHash: "sha256",
+									},
+									Buffer.from(keyObject.key)
+								);
+								encKeyArray.push(encryptedKey.toString("base64"));
+							});
+							 
 							res.status(200);
 							res.send("Uploaded Files Sucessfully");
 						})
