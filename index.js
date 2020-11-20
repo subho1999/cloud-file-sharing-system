@@ -6,7 +6,7 @@ const fs = require("fs");
 const express = require("express");
 const upload = require("express-fileupload");
 const splitFile = require("split-file");
-const admin = require("firebase-admin");
+const NodeRSA = require("node-rsa");
 
 const AppendInitVect = require("./appendInitVector");
 
@@ -29,12 +29,12 @@ app.use(
 
 // const defaultApp = admin.initializeApp(defaultAppConfig);
 
-
 // Global Variables
 const chunkSize = 1024 * 1024;
 let keyArray = new Array();
 let namesArray = new Array();
 let encKeyArray = new Array();
+let decKeyArray = new Array();
 
 const uploadFile = (file) => {
 	return new Promise((resolve, reject) => {
@@ -77,7 +77,7 @@ function decryptFile(encFilePath, index) {
 	readIV.on("close", () => {
 		const readStream = fs.createReadStream(encFilePath, { start: 16 });
 		const unzip = zlib.createGunzip();
-		const key = keyArray[index].key;
+		const key = decKeyArray[index];
 		const decipher = crypto.createDecipheriv("aes256", key, initVector);
 
 		fs.unlinkSync(encFilePath.replace(".enc", ""));
@@ -102,18 +102,29 @@ app.post("/upload", async (req, res) => {
 								generateKey(fileLocation, index);
 								encryptFile(fileLocation, index);
 							});
+							// console.log(namesArray);
+
+							const rsa_key = new NodeRSA();
+							const privateKey = fs.readFileSync("privateKey.txt");
+							//const publicKey = fs.readFileSync("publicKey.txt");
+							rsa_key.importKey(privateKey, "pkcs1-private-pem");
 							keyArray.forEach((keyObject, index) => {
-								const encryptedKey = crypto.privateEncrypt(
-									{
-										key: req.body.privateKey,
-										padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-										oaepHash: "sha256",
-									},
-									Buffer.from(keyObject.key)
-								);
-								encKeyArray.push(encryptedKey.toString("base64"));
-							});
-							 
+								let encData = rsa_key.encryptPrivate(Buffer.from(keyObject.key), "base64");
+								encKeyArray.push(encData);
+							});+
+							// console.log(keyArray);
+							// console.log(encKeyArray);
+							// encKeyArray.forEach((rkey, index) => {
+							// 	let temp_rsa_key = new NodeRSA();
+							// 	temp_rsa_key.importKey(publicKey, "pkcs1-public-pem");
+							// 	let decData = temp_rsa_key.decryptPublic(rkey);
+							// 	decKeyArray.push(decData);
+							// });
+
+							// namesArray.forEach((encFilePath, index) => {
+							// 	decryptFile(encFilePath, index);
+							// });
+
 							res.status(200);
 							res.send("Uploaded Files Sucessfully");
 						})
