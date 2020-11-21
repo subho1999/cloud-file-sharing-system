@@ -168,8 +168,17 @@ app.get("/download", (req, res) => {
 	}
 	let decryptedOutputFile = path.join(__dirname, "downloads", origFile);
 	setTimeout(() => {
-		splitFile.mergeFiles(decNamesArray, decryptedOutputFile);
+		splitFile
+			.mergeFiles(decNamesArray, decryptedOutputFile)
+			.then(() => {
+				res.status(200).send("Successfully decrypted file");
+			})
+			.catch((err) => {
+				console.log(err);
+				res.status(500).send("Error decrypting file");
+			});
 	}, 2000);
+
 	// console.log(decNamesArray);
 });
 
