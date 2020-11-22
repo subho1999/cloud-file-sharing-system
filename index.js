@@ -9,25 +9,19 @@ const splitFile = require("split-file");
 const NodeRSA = require("node-rsa");
 
 const AppendInitVect = require("./appendInitVector");
+const { SSL_OP_ALL } = require("constants");
+const { stderr } = require("process");
 
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
-
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 app.use(
 	upload({
 		createParentPath: true,
 	})
 );
-
-// // Firebase Admin initialize
-// var serviceAccount = require("./encrypted-storage-system-firebase-adminsdk-xqaq0-a5caa56742.json");
-// admin.initializeApp({
-// 	credential: admin.credential.cert(serviceAccount),
-// 	databaseURL: "https://encrypted-storage-system.firebaseio.com",
-// });
-
-// const defaultApp = admin.initializeApp(defaultAppConfig);
 
 // Global Variables
 const chunkSize = 1024 * 1024;
@@ -81,10 +75,6 @@ function decryptFile(encFilePath, decFilePath, index) {
 		const unzip = zlib.createGunzip();
 		const key = decKeyArray[index];
 		const decipher = crypto.createDecipheriv("aes256", key, initVector);
-
-		// fs.unlinkSync(encFilePath.replace(".enc", ""));
-
-		// const writeStream = fs.createWriteStream(encFilePath.replace(".enc", ""));
 		const writeStream = fs.createWriteStream(decFilePath);
 		readStream.pipe(decipher).pipe(unzip).pipe(writeStream);
 		decNamesArray.push(decFilePath);
@@ -107,33 +97,26 @@ app.post("/upload", async (req, res) => {
 								generateKey(fileLocation, index);
 								encryptFile(fileLocation, index);
 							});
-							// console.log(namesArray);
 
 							const rsa_key = new NodeRSA();
 							const privateKey = fs.readFileSync("privateKey.txt");
-							//const publicKey = fs.readFileSync("publicKey.txt");
 							rsa_key.importKey(privateKey, "pkcs1-private-pem");
 							keyArray.forEach((keyObject, index) => {
 								let encData = rsa_key.encryptPrivate(Buffer.from(keyObject.key), "base64");
 								encKeyArray.push(encData);
 							});
-
-							// console.log(keyArray);
-							// console.log(encKeyArray);
-							// encKeyArray.forEach((rkey, index) => {
-							// 	let temp_rsa_key = new NodeRSA();
-							// 	temp_rsa_key.importKey(publicKey, "pkcs1-public-pem");
-							// 	let decData = temp_rsa_key.decryptPublic(rkey);
-							// 	decKeyArray.push(decData);
+							fs.writeFileSync("1", encKeyArray[0], { encoding: "base64" });
+							// let numOfParts = encKeyArray.length.toString() + "\n";
+							// fs.appendFileSync("1", numOfParts);
+							// encKeyArray.forEach((encKey, index) => {
+							// 	fs.appendFileSync("1", encKey.toString(), { encoding: "base64" });
+							// 	fs.appendFileSync("1", "\n");
 							// });
-
-							// namesArray.forEach((encFilePath, index) => {
-							// 	decryptFile(encFilePath, index);
+							// namesArray.forEach((filePath, index) => {
+							// 	fs.appendFileSync("1", filePath + "\n");
 							// });
-
 							res.status(200);
-
-							res.send("Uploaded Files Sucessfully");
+							res.send('Uploaded Files Sucessfully. The File ID is: "1"');
 						})
 						.catch((err) => {
 							console.log(err);
@@ -154,11 +137,25 @@ app.post("/upload", async (req, res) => {
 	}
 });
 
-app.get("/download", (req, res) => {
+app.post("/download", (req, res) => {
 	const publicKey = fs.readFileSync("publicKey.txt");
 	const dec_rsa_key = new NodeRSA();
 	dec_rsa_key.importKey(publicKey, "pkcs1-public-pem");
-	for (let i = 0; i < encKeyArray.length; i++) {
+	const fileId = req.body.fileId.toString();
+	const encryptedKey0 = fs.readFileSync(fileId, { encoding: "base64" });
+	const decryptedKey0 = dec_rsa_key.decryptPublic(encryptedKey0);
+	// decKeyArray.push(decryptedKey0);
+	// let decryptedFileName = namesArray[0].split("/").pop().replace(".enc", "");
+	// let decryptedFilePath = path.join(__dirname, "downloads", decryptedFileName);
+	// decryptFile(namesArray[0], decryptedFilePath, 0);
+	// let decData = dec_rsa_key.decryptPublic(encKeyArray[i]);
+	decKeyArray.push(decryptedKey0);
+	let decryptedFileName = namesArray[0].split("/").pop().replace(".enc", "");
+	let decryptedFilePath = path.join(__dirname, "downloads", decryptedFileName);
+
+	decryptFile(namesArray[0], decryptedFilePath, 0);
+
+	for (let i = 1; i < encKeyArray.length; i++) {
 		let decData = dec_rsa_key.decryptPublic(encKeyArray[i]);
 		decKeyArray.push(decData);
 		let decryptedFileName = namesArray[i].split("/").pop().replace(".enc", "");
@@ -178,8 +175,6 @@ app.get("/download", (req, res) => {
 				res.status(500).send("Error decrypting file");
 			});
 	}, 2000);
-
-	// console.log(decNamesArray);
 });
 
 const PORT = process.env.PORT || 5000;

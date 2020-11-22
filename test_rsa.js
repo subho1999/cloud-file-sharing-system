@@ -17,7 +17,8 @@ const publicKey = fs.readFileSync("publicKey.txt");
 key.importKey(privateKey, "pkcs1-private-pem");
 key.importKey(publicKey, "pkcs1-public-pem");
 
-const data = fs.readFileSync('./bufferdata');
+// const data = fs.readFileSync('./bufferdata');
+data = "some data"
 console.log(data);
 
 const encData = key.encryptPrivate(Buffer.from(data), "base64");
@@ -26,5 +27,5 @@ fs.writeFileSync("encrypteddata", encData, { encoding: "base64" });
 
 const encData1 = fs.readFileSync("./encrypteddata", { encoding: "base64" });
 const decData = key.decryptPublic(encData1);
-console.log(decData);
+console.log(decData.toString());
 fs.writeFileSync("decrypteddata", decData);
